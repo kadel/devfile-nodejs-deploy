@@ -1,39 +1,42 @@
 schemaVersion: 2.2.0
-
 metadata:
   language: javascript
-  name: mynodetest
+  name: devfile-nodejs-deploy
   projectType: nodejs
 variables:
-  CONTAINER_IMAGE: quay.io/tkral/test:latest
+  CONTAINER_IMAGE: quay.io/tkral/devfile-nodejs-deploy:latest
 commands:
-  - exec:
+  - id: install
+    exec:
       commandLine: npm install
       component: runtime
       group:
         isDefault: true
         kind: build
       workingDir: $PROJECT_SOURCE
-    id: install
-  - exec:
+  - id: run
+    exec:
       commandLine: npm start
       component: runtime
       group:
         isDefault: true
         kind: run
       workingDir: $PROJECT_SOURCE
-    id: run
   - id: build-image
     apply:
       component: prod-image
-  - id: deployk8s
+  - id: deploy-deployment
     apply:
       component: outerloop-deploy
+  - id: deploy-service
+    apply:
+      component: outerloop-service
   - id: deploy
     composite:
       commands:
         - build-image
-        - deployk8s
+        - deploy-deployment
+        - deploy-service
       group:
         kind: deploy
         isDefault: true
@@ -58,18 +61,37 @@ components:
         kind: Deployment
         apiVersion: apps/v1
         metadata:
-          name: mynode
+          name: devfile-nodejs-deploy
         spec:
           replicas: 1
           selector:
             matchLabels:
-              app: node-app
+              app: devfile-nodejs-deploy
           template:
             metadata:
               labels:
-                app: node-app
+                app: devfile-nodejs-deploy
             spec:
               containers:
                 - name: main
                   image: "{{CONTAINER_IMAGE}}"
                   resources: {}
+  - name: outerloop-service
+    kubernetes:
+      inlined: |
+          apiVersion: v1
+          kind: Service
+          metadata:
+            labels:
+              app: devfile-nodejs-deploy
+            name: devfile-nodejs-deploy
+          spec:
+            ports:
+            - name: http-3000
+              port: 3000
+              protocol: TCP
+              targetPort: 3000
+            selector:
+              app: devfile-nodejs-deploy
+            type: LoadBalancer
+
