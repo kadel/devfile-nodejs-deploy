@@ -1,10 +1,11 @@
 schemaVersion: 2.2.0
 metadata:
   language: javascript
-  name: devfile-nodejs-deploy
+  name: my-awesome-app
   projectType: nodejs
 variables:
   CONTAINER_IMAGE: quay.io/tkral/devfile-nodejs-deploy:latest
+  FOO: bar
 commands:
   - id: install
     exec:
@@ -25,18 +26,14 @@ commands:
   - id: build-image
     apply:
       component: prod-image
-  - id: deploy-deployment
+  - id: deploy-knative-service
     apply:
-      component: outerloop-deploy
-  - id: deploy-service
-    apply:
-      component: outerloop-service
+      component: outerloop-knative-service
   - id: deploy
     composite:
       commands:
         - build-image
-        - deploy-deployment
-        - deploy-service
+        - deploy-knative-service
       group:
         kind: deploy
         isDefault: true
@@ -58,40 +55,15 @@ components:
   - name: outerloop-deploy
     kubernetes:
       inlined: |
-        kind: Deployment
-        apiVersion: apps/v1
+        apiVersion: serving.knative.dev/v1
+        kind: Service
         metadata:
-          name: devfile-nodejs-deploy
+          name: helloworld-go
         spec:
-          replicas: 1
-          selector:
-            matchLabels:
-              app: devfile-nodejs-deploy
           template:
-            metadata:
-              labels:
-                app: devfile-nodejs-deploy
             spec:
               containers:
-                - name: main
-                  image: "{{CONTAINER_IMAGE}}"
-                  resources: {}
-  - name: outerloop-service
-    kubernetes:
-      inlined: |
-          apiVersion: v1
-          kind: Service
-          metadata:
-            labels:
-              app: devfile-nodejs-deploy
-            name: devfile-nodejs-deploy
-          spec:
-            ports:
-            - name: http-3000
-              port: 3000
-              protocol: TCP
-              targetPort: 3000
-            selector:
-              app: devfile-nodejs-deploy
-            type: LoadBalancer
+              - image: quay.io/tkral/devfile-nodejs-deploy:latest
+                ports:
+                  - containerPort: 3000
 
