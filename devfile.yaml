@@ -52,7 +52,7 @@ components:
       dockerfile:
         uri: ./Dockerfile
         buildContext: ${PROJECT_SOURCE}
-  - name: outerloop-deploy
+  - name: outerloop-knative-service
     kubernetes:
       inlined: |
         apiVersion: serving.knative.dev/v1
